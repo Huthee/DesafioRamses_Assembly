@@ -1,0 +1,144 @@
+	
+	org	0
+
+volta:	LDR	A,direct	;verificação da direção da bola conforme d		
+	NOT	A
+	AND	A,d
+	JMP	v,I		;para percorrer a ordem correta dos desvios, conforme verifica sua direção
+	JZ	deslocYN
+	JZ	deslocYP
+	JZ	deslocXN
+	JZ	deslocXP
+	LDR	X,v		;v contém os endereços dos JZ
+	SUB	X,#2		;a cada laço diminui sua posição para verificar outra direção
+	STR	X,v
+	LDR	B,d		;modifica o verificador de direção
+	ADD	B,d
+	STR	B,d
+	JMP	volta		;executa a verificação novamente
+		
+deslocYP:			;if(d==4){posY += posY + 1}
+	JSR	matriz		;calcula a posição da bola na matriz
+		
+	JN	volta
+	
+	LDR	A,posY
+	SUB	A,#5		
+	JZ	reset		; controle do limite da caixa para o movimento da bola
+	
+	LDR	A,posY		; mudança de posição da bola (1 casa para baixo)	
+	ADD	A,#1
+	STR	A,posY
+	JMP	deslocYP		
+
+deslocYN:			;if(d==8){posY += posY - 1}
+	JSR	matriz		;calcula a posição da bola na matriz
+	
+	JN	volta
+	
+	LDR	A,posY		
+	JZ	reset		; controle do limite da caixa para o movimento da bola
+	
+	SUB	A,#1		; mudança de posição da bola (1 casa para cima)
+	STR	A,posY
+	JMP	deslocYN			
+
+deslocXP:			;if(d==1){posY += posX + 1}
+	JSR	matriz		;calcula a posição da bola na matriz
+	
+	JN	volta
+	
+	LDR	A,posX		
+	SUB	A,#5
+	JZ	reset		; controle do limite da caixa para o movimento da bola
+	
+	LDR	A,posX		; mudança de posição da bola (1 casa para a direita)
+	ADD	A,#1
+	STR	A,posX
+	JMP	deslocXP			
+
+deslocXN:			;if(d==2){posY += posX - 1}
+	JSR	matriz		;calcula a posição da bola na matriz
+	
+	JN	volta
+	
+	LDR	A,posX		
+	JZ	reset		; controle do limite da caixa para o movimento da bola
+	
+	SUB	A,#1		; mudança de posição da bola (1 casa para a esquerda)
+	STR	A,posX				
+	JMP	deslocXN
+
+matriz:				;busca da posição da bola na matriz
+	NOP
+	LDR	B,posY		;passa o valor de posY para uma variável contadora
+	STR	B,varY
+				;verificando se y já é zero = mesma linha da matriz
+	OR	B,#0
+	JZ	formula1
+	JMP	formula2
+				;6y + x = valor do endereço na matriz em que a bola se encontra
+formula1:			;formula1: quando y=0 ou depois que a multiplicação 6y foi executada
+	LDR	A,posR
+	ADD	A,posX
+	ADD	A,#matrix	;posição da bola = endereço matrix + valor final da formula
+	STR	A,posR		;chega na posição da matriz em que a bolinha está
+	JMP	redirect	
+	
+formula2:			;formula2: Quando y>0, efetua a multiplicação 6y e depois completa em "formula1"
+	LDR	B,posR		; calcula a multiplicação de 6 com posY
+	ADD	B,#6
+	STR	B,posR
+	
+	LDR	B,varY		; decremento da variável contadora
+	SUB	B,#1
+	STR	B,varY
+	JZ	formula1
+	JMP	formula2
+redirect:			;verificação da existência de um redirecionador na posição em que a bola está
+	LDR	A,posR,I
+				;Se o dado do endereço da bola na matriz for 0, a bola não é redirecionada: pula para "continua"
+	JZ	continua
+	JMP	troca		;Se possui um redirecionador:pula para "troca"
+continua:
+	LDR	A,#0
+	STR	A,posR
+	JMP	matriz,I
+troca:				
+	LDR	B,direct	;Se a direção da bola e do redirecionador forem iguais, ela continua seu percurso
+	NOT 	B
+	AND	B,posR,I
+	JZ	continua	;Se não, a direção da bola é redefinida
+	STR	A,direct		
+reset:				;Resetando variáveis para efetuar o algorítmo novamente, iniciado em "volta"
+	LDR	X,#1		; "reset":usado, também, para resetar variáveis quando o programa termina
+	STR	X,d		
+	LDR	X,#13
+	STR	X,v
+	LDR	X,#0
+	
+	SUB	A,#1		;caso especial de controle ao finalizar o programa(quando a bola atinge sua posição de saída)	
+	JN	fim
+	
+	STR	X,posR
+	LDR	X,#-1		;valor para poder executar o programa a partir de "volta" denovo no retorno
+	
+	JMP	matriz,I
+
+fim:	HLT
+
+
+	org	213
+posR:	db	0	;variável de controle da posição da bola na matriz
+varY:	db	0	;variável para efetuar a multiplicação na formula para a posição da bola na matriz
+d:	db	1	;inicializar em 1(para buscar a direção da bola)
+v:	db	13	;endereço do primeiro desvio para calcular-se o deslocamento da bola
+
+	org	217
+matrix:	dab	[35]	;caixa 6x6
+	
+	org	253
+posX:	db	0	;posição coord. X (varia de 0 a 5)
+posY:	db	0	;posição coord. Y (varia de 0 a 5)
+direct:	db	1	;direção do movimento
+			
